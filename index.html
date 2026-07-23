@@ -115,14 +115,13 @@
             btn.style.opacity = '0.5';
             logsBox.style.display = 'block';
             logContent.innerHTML = '<div class="log-item"><div class="spinner"></div> Cloud server ko trigger bhej rahe hain...</div>';
-
             try {
-                // 1. Trigger GitHub Workflow
-                const triggerRes = await fetch(`https://api.github.com/repos/${USERNAME}/${REPO}/actions/workflows/download.yml/dispatches`, {
+                const response = await fetch(`https://api.github.com/repos/${USERNAME}/${REPO}/actions/workflows/download.yml/dispatches`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `token ${TOKEN}`,
-                        'Accept': 'application/vnd.github.v3+json',
+                        'Authorization': `Bearer ${TOKEN}`,
+                        'Accept': 'application/vnd.github+json',
+                        'X-GitHub-Api-Version': '2022-11-28',
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
@@ -131,14 +130,11 @@
                     })
                 });
 
-                if (!triggerRes.ok) throw new Error('Workflow trigger fail ho gaya! Token check karein.');
-
-                logContent.innerHTML += '<div class="log-item"><div class="spinner"></div> Job queue mein hai, start ho rahi hai...</div>';
-
-                // Thoda wait karke run ID dhundte hain
-                setTimeout(pollWorkflowStatus, 5000);
-
-            } catch (err) {
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errText}`);
+        }
+                    catch (err) {
                 logContent.innerHTML += `<div class="log-item error">❌ Error: ${err.message}</div>`;
                 btn.disabled = false;
                 btn.style.opacity = '1';
