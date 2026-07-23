@@ -26,12 +26,12 @@ jobs:
       - name: Setup Environment & Install Tools
         run: |
           sudo apt-get update
-          # Yahan humne 'nodejs' add kar diya hai taaki YouTube ka JS puzzle solve ho sake
           sudo apt-get install -y ffmpeg clamav curl nodejs
-          pip install --upgrade yt-dlp
+          # yt-dlp ko sabse latest version par upgrade karna
+          sudo pip install --upgrade yt-dlp
           sudo freshclam || true
 
-      - name: Download Media / File (Anti-Bot & JS Solver Enabled)
+      - name: Download Media / File (Pure Cookies Mode)
         id: download_step
         env:
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
@@ -47,8 +47,8 @@ jobs:
           echo "🌐 Starting download for: $URL"
           
           if [[ "$URL" =~ (youtube\.com|youtu\.be|instagram\.com|facebook\.com|twitter\.com) ]]; then
-            # Yahan cookies ke sath 'android' client ki trick bhi wapas laga di hai
-            BASE_ARGS="--force-ipv4 --cookies cookies.txt --extractor-args youtube:player_client=android,web"
+            # Yahan se android client hata diya hai, ab sirf cookies aur force-ipv4 use hoga
+            BASE_ARGS="--force-ipv4 --cookies cookies.txt"
             
             if [ "$QUALITY" == "4k" ]; then
               yt-dlp $BASE_ARGS -f "bv*[height<=2160]+ba/b[height<=2160] / best" "$URL"
