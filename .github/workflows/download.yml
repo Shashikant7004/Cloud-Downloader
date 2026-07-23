@@ -31,19 +31,20 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup Python & Install Tools
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Install Dependencies & Latest yt-dlp
+      - name: Install Dependencies & Master yt-dlp (Bleeding Edge)
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg clamav curl
-          pip install --upgrade yt-dlp
+          sudo apt-get install -y ffmpeg clamav curl python3-pip
+          # Yahan hum PyPI ki jagah direct unke Master server se absolute latest code le rahe hain
+          pip install -U https://github.com/yt-dlp/yt-dlp/archive/master.zip
           sudo freshclam || true
 
-      - name: Download Media / File (JS Solver Active)
+      - name: Download Media / File
         id: download_step
         env:
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
@@ -59,7 +60,8 @@ jobs:
           echo "🌐 Starting download for: $URL"
           
           if [[ "$URL" =~ (youtube\.com|youtu\.be|instagram\.com|facebook\.com|twitter\.com) ]]; then
-            BASE_ARGS="--force-ipv4 --cookies cookies.txt"
+            # --rm-cache-dir lagaya hai taaki purane broken puzzles ka kachra saaf ho jaye
+            BASE_ARGS="--rm-cache-dir --force-ipv4 --cookies cookies.txt"
             
             if [ "$QUALITY" == "4k" ]; then
               yt-dlp $BASE_ARGS -f "bv*[height<=2160]+ba/b[height<=2160] / best" "$URL"
