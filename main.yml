@@ -13,20 +13,24 @@ jobs:
       - name: Fast Boot (Tools Setup)
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq clamav > /dev/null
+          sudo apt-get install -y -qq clamav ffmpeg > /dev/null
           sudo freshclam --quiet || true
-          pip install -q yt-dlp
+          pip install -U -q yt-dlp
 
       - name: Process & Scan
+        env:
+          TARGET_URL: ${{ inputs.url }}
         run: |
           mkdir vault
           cd vault
-          URL="${{ github.event.inputs.url }}"
           
-          if [[ "$URL" == *"youtube."* || "$URL" == *"youtu.be"* || "$URL" == *"instagram."* ]]; then
-            yt-dlp -f "bv*+ba/b" "$URL"
+          if [[ "$TARGET_URL" == *"youtube.com"* || "$TARGET_URL" == *"youtu.be"* || "$TARGET_URL" == *"instagram.com"* ]]; then
+            echo "Downloading Media..."
+            # Pehle best quality try karega, fail hone par normal quality download karega
+            yt-dlp -f "bv*+ba/b" --merge-output-format mp4 "$TARGET_URL" || yt-dlp -f "b" "$TARGET_URL"
           else
-            curl -sL -O "$URL"
+            echo "Downloading File & Scanning..."
+            curl -sL -O "$TARGET_URL"
             clamscan --no-summary ./* || exit 1
           fi
 
@@ -36,4 +40,5 @@ jobs:
           name: Secure-Vault
           path: vault/*
           retention-days: 1
+          
           
