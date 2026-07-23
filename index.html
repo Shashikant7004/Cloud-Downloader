@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Secure Downloader & Scanner</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a, #1e1b4b);
+            color: #f8fafc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        h2 { margin-bottom: 5px; color: #38bdf8; }
+        p { color: #94a3b8; font-size: 14px; margin-bottom: 20px; }
+        input {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 15px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #fff;
+            border-radius: 8px;
+            box-sizing: border-box;
+            outline: none;
+            transition: 0.3s;
+        }
+        input:focus { border-color: #38bdf8; box-shadow: 0 0 8px rgba(56, 189, 248, 0.3); }
+        button {
+            background: linear-gradient(135deg, #0ea5e9, #2563eb);
+            color: white;
+            border: none;
+            padding: 14px;
+            width: 100%;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        .logs-box {
+            margin-top: 20px;
+            background: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: left;
+            font-family: monospace;
+            font-size: 13px;
+            max-height: 180px;
+            overflow-y: auto;
+            display: none;
+        }
+        .log-item { margin: 6px 0; display: flex; align-items: center; gap: 8px; }
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid #38bdf8;
+            border-top: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🛡️ Cloud Armor</h2>
+        <p>Real-time Secure File Downloader & Antivirus Scanner</p>
+        
+        <input type="text" id="fileUrl" placeholder="Direct file ya APK ka link yahan dalein...">
+        <button id="actionBtn" onclick="startProcess()">Start Secure Scan</button>
+        
+        <div id="logsBox" class="logs-box">
+            <div id="logContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // Yahan apni GitHub details daal dena
+        const USERNAME = 'YOUR_GITHUB_USERNAME';
+        const REPO = 'YOUR_REPO_NAME';
+        const TOKEN = 'YOUR_GITHUB_PAT_TOKEN'; // Classic token with 'repo' scope
+
+        async function startProcess() {
+            const url = document.getElementById('fileUrl').value;
+            const btn = document.getElementById('actionBtn');
+            const logsBox = document.getElementById('logsBox');
+            const logContent = document.getElementById('logContent');
+
+            if (!url) {
+                alert('Pehle link toh enter karo!');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            logsBox.style.display = 'block';
+            logContent.innerHTML = '<div class="log-item"><div class="spinner"></div> Cloud server ko trigger bhej rahe hain...</div>';
+
+            try {
+                // 1. Trigger GitHub Workflow
+                const triggerRes = await fetch(`https://api.github.com/repos/${USERNAME}/${REPO}/actions/workflows/download.yml/dispatches`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `token ${TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        ref: 'main',
+                        inputs: { url: url, quality: 'best' }
+                    })
+                });
+
+                if (!triggerRes.ok) throw new Error('Workflow trigger fail ho gaya! Token check karein.');
+
+                logContent.innerHTML += '<div class="log-item"><div class="spinner"></div> Job queue mein hai, start ho rahi hai...</div>';
+
+                // Thoda wait karke run ID dhundte hain
+                setTimeout(pollWorkflowStatus, 5000);
+
+            } catch (err) {
+                logContent.innerHTML += `<div class="log-item error">❌ Error: ${err.message}</div>`;
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
+        }
+
+        async function pollWorkflowStatus() {
+            const logContent = document.getElementById('logContent');
+            const btn = document.getElementById('actionBtn');
+
+            try {
+                // Latest run ki details nikalte hain
+                const runsRes = await fetch(`https://api.github.com/repos/${USERNAME}/${REPO}/actions/runs?per_page=1`, {
+                    headers: { 'Authorization': `token ${TOKEN}` }
+                });
+                const data = await runsRes.json();
+                const latestRun = data.workflow_runs[0];
+
+                if (!latestRun) {
+                    setTimeout(pollWorkflowStatus, 4000);
+                    return;
+                }
+
+                const status = latestRun.status; // queued, in_progress, completed
+                const conclusion = latestRun.conclusion; // success, failure, null
+
+                if (status === 'queued') {
+                    logContent.innerHTML = '<div class="log-item"><div class="spinner"></div> Server par queue mein hai...</div>';
+                    setTimeout(pollWorkflowStatus, 4000);
+                } 
+                else if (status === 'in_progress') {
+                    logContent.innerHTML = '<div class="log-item"><div class="spinner"></div> 🚀 Cloud par file download aur Antivirus scan chal raha hai...</div>';
+                    setTimeout(pollWorkflowStatus, 4000);
+                } 
+                else if (status === 'completed') {
+                    if (conclusion === 'success') {
+                        logContent.innerHTML = '<div class="log-item success">✅ Scan Successful! File 100% Safe hai.</div>';
+                        logContent.innerHTML += `<div class="log-item"><a href="${latestRun.html_url}" target="_blank" style="color: #38bdf8;">📥 GitHub Actions par jaakar file download karein</a></div>`;
+                    } else {
+                        logContent.innerHTML = '<div class="log-item error">❌ Security Check Failed! Virus detect hua ya link kharab hai.</div>';
+                    }
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                }
+            } catch (e) {
+                setTimeout(pollWorkflowStatus, 5000);
+            }
+        }
+    </script>
+</body>
+</html>
