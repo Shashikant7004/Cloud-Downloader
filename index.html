@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud Secure Downloader & Scanner</title>
+    <title>Cloud Armor - Secure Downloader</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -66,7 +66,7 @@
             overflow-y: auto;
             display: none;
         }
-        .log-item { margin: 6px 0; display: flex; align-items: center; gap: 8px; }
+        .log-item { margin: 6px 0; display: flex; align-items: center; gap: 8px; word-break: break-all; }
         .spinner {
             width: 14px;
             height: 14px;
@@ -75,6 +75,7 @@
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             display: inline-block;
+            flex-shrink: 0;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .success { color: #4ade80; }
@@ -95,10 +96,10 @@
     </div>
 
     <script>
-        // Yahan apni GitHub details daal dena
-        const USERNAME = 'Shashikant7004';
+        // Aapki details pehle se set hain
+        const USERNAME = 'shashikant7004';
         const REPO = 'Cloud-Downloader';
-        const TOKEN = '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'; // Classic token with 'repo' scope
+        const TOKEN = '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'; // Apna naya classic token yahan daal dena
 
         async function startProcess() {
             const url = document.getElementById('fileUrl').value;
@@ -111,11 +112,18 @@
                 return;
             }
 
+            if (TOKEN.includes('YAHAN_APNA')) {
+                alert('Bhai pehle code mein apna GitHub Token toh daal lo!');
+                return;
+            }
+
             btn.disabled = true;
             btn.style.opacity = '0.5';
             logsBox.style.display = 'block';
             logContent.innerHTML = '<div class="log-item"><div class="spinner"></div> Cloud server ko trigger bhej rahe hain...</div>';
+
             try {
+                // 1. Trigger GitHub Workflow
                 const response = await fetch(`https://api.github.com/repos/${USERNAME}/${REPO}/actions/workflows/download.yml/dispatches`, {
                     method: 'POST',
                     headers: {
@@ -133,8 +141,14 @@
                 if (!response.ok) {
                     const errText = await response.text();
                     throw new Error(`HTTP ${response.status}: ${errText}`);
-        }
-                    catch (err) {
+                }
+
+                logContent.innerHTML += '<div class="log-item"><div class="spinner"></div> Job queue mein hai, start ho rahi hai...</div>';
+
+                // Thoda wait karke status check karna shuru karte hain
+                setTimeout(pollWorkflowStatus, 5000);
+
+            } catch (err) {
                 logContent.innerHTML += `<div class="log-item error">❌ Error: ${err.message}</div>`;
                 btn.disabled = false;
                 btn.style.opacity = '1';
@@ -146,10 +160,15 @@
             const btn = document.getElementById('actionBtn');
 
             try {
-                // Latest run ki details nikalte hain
                 const runsRes = await fetch(`https://api.github.com/repos/${USERNAME}/${REPO}/actions/runs?per_page=1`, {
-                    headers: { 'Authorization': `token ${TOKEN}` }
+                    headers: { 
+                        'Authorization': `Bearer ${TOKEN}`,
+                        'Accept': 'application/vnd.github+json'
+                    }
                 });
+                
+                if (!runsRes.ok) throw new Error('Status check fail ho gaya');
+
                 const data = await runsRes.json();
                 const latestRun = data.workflow_runs[0];
 
@@ -158,8 +177,8 @@
                     return;
                 }
 
-                const status = latestRun.status; // queued, in_progress, completed
-                const conclusion = latestRun.conclusion; // success, failure, null
+                const status = latestRun.status; 
+                const conclusion = latestRun.conclusion; 
 
                 if (status === 'queued') {
                     logContent.innerHTML = '<div class="log-item"><div class="spinner"></div> Server par queue mein hai...</div>';
