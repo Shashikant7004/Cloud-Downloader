@@ -36,13 +36,27 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Dependencies & Master yt-dlp (Bleeding Edge)
+      - name: Cache ClamAV Database (Super Speed + Full Security)
+        uses: actions/cache@v4
+        with:
+          path: /var/lib/clamav
+          key: clamav-database-${{ github.run_id }}
+          restore-keys: |
+            clamav-database-
+
+      - name: Install Dependencies & Master yt-dlp
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg clamav curl python3-pip
-          # Yahan hum PyPI ki jagah direct unke Master server se absolute latest code le rahe hain
           pip install -U https://github.com/yt-dlp/yt-dlp/archive/master.zip
-          sudo freshclam || true
+          
+          # Agar cache mein database nahi mila, tabhi freshclam chalega warna skip ho jayega
+          if [ ! -f /var/lib/clamav/main.cvd ] && [ ! -f /var/lib/clamav/main.cld ]; then
+            echo "📥 Downloading fresh virus definitions..."
+            sudo freshclam || true
+          else
+            echo "⚡ Using cached virus definitions (Super Fast!)"
+          fi
 
       - name: Download Media / File
         id: download_step
@@ -60,7 +74,6 @@ jobs:
           echo "🌐 Starting download for: $URL"
           
           if [[ "$URL" =~ (youtube\.com|youtu\.be|instagram\.com|facebook\.com|twitter\.com) ]]; then
-            # --rm-cache-dir lagaya hai taaki purane broken puzzles ka kachra saaf ho jaye
             BASE_ARGS="--rm-cache-dir --force-ipv4 --cookies cookies.txt"
             
             if [ "$QUALITY" == "4k" ]; then
