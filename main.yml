@@ -1,0 +1,39 @@
+name: Smart Cloud Engine
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Target URL'
+        required: true
+
+jobs:
+  Secure-Fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fast Boot (Tools Setup)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clamav > /dev/null
+          sudo freshclam --quiet || true
+          pip install -q yt-dlp
+
+      - name: Process & Scan
+        run: |
+          mkdir vault
+          cd vault
+          URL="${{ github.event.inputs.url }}"
+          
+          if [[ "$URL" == *"youtube."* || "$URL" == *"youtu.be"* || "$URL" == *"instagram."* ]]; then
+            yt-dlp -f "bv*+ba/b" "$URL"
+          else
+            curl -sL -O "$URL"
+            clamscan --no-summary ./* || exit 1
+          fi
+
+      - name: Export Secure Payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Secure-Vault
+          path: vault/*
+          retention-days: 1
+          
