@@ -39,9 +39,7 @@
             border-radius: 8px;
             box-sizing: border-box;
             outline: none;
-            transition: 0.3s;
         }
-        input:focus { border-color: #38bdf8; box-shadow: 0 0 8px rgba(56, 189, 248, 0.3); }
         button {
             background: linear-gradient(135deg, #0ea5e9, #2563eb);
             color: white;
@@ -51,10 +49,7 @@
             border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
-            transition: 0.3s;
         }
-        button:hover { opacity: 0.9; transform: translateY(-1px); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
         .logs-box {
             margin-top: 20px;
             background: #020617;
@@ -64,24 +59,9 @@
             text-align: left;
             font-family: monospace;
             font-size: 13px;
-            max-height: 180px;
-            overflow-y: auto;
             display: none;
         }
-        .log-item { margin: 6px 0; display: flex; align-items: center; gap: 8px; word-break: break-all; }
-        .spinner {
-            width: 14px;
-            height: 14px;
-            border: 2px solid #38bdf8;
-            border-top: transparent;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            display: inline-block;
-            flex-shrink: 0;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .success { color: #4ade80; }
-        .error { color: #f87171; }
         .info { color: #38bdf8; }
     </style>
 </head>
@@ -91,7 +71,7 @@
         <p>Real-time Secure File Downloader & Antivirus Scanner</p>
         
         <input type="text" id="fileUrl" placeholder="Direct file ya APK ka link yahan dalein...">
-        <button id="actionBtn" type="button" onclick="startProcess()">Start Secure Scan</button>
+        <button type="button" onclick="startProcess()">Run on GitHub Actions</button>
         
         <div id="logsBox" class="logs-box">
             <div id="logContent"></div>
@@ -99,12 +79,10 @@
     </div>
 
     <script>
-        async function startProcess() {
+        function startProcess() {
             const urlInput = document.getElementById('fileUrl');
-            const btn = document.getElementById('actionBtn');
             const logsBox = document.getElementById('logsBox');
             const logContent = document.getElementById('logContent');
-
             const url = urlInput.value.trim();
 
             if (!url) {
@@ -112,36 +90,16 @@
                 return;
             }
 
-            btn.disabled = true;
             logsBox.style.display = 'block';
-            logContent.innerHTML = '<div class="log-item"><div class="spinner"></div> Secure server par request bhej rahe hain...</div>';
+            logContent.innerHTML = '<div class="log-item info">🔄 GitHub par redirect ho raha hai...</div>';
 
-            try {
-                // Vercel Serverless Function ko call kar rahe hain (No token exposed on client)
-                const response = await fetch('/api/trigger', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: url })
-                });
+            // Aapke GitHub Actions workflow ka direct page
+            const workflowUrl = 'https://github.com/shashikant7004/Cloud-Downloader/actions/workflows/download.yml';
 
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Server trigger fail ho gaya');
-                }
-
-                logContent.innerHTML = '<div class="log-item"><div class="spinner"></div> 🚀 Scan & Download queue mein start ho gaya hai...</div>';
-                
-                // Thoda wait karke success message dikha do
-                setTimeout(() => {
-                    logContent.innerHTML += '<div class="log-item success">✅ Process successfully trigger ho gaya! GitHub Actions check karein.</div>';
-                    btn.disabled = false;
-                }, 4000);
-
-            } catch (err) {
-                logContent.innerHTML = `<div class="log-item error">❌ Error: ${err.message}</div>`;
-                btn.disabled = false;
-            }
+            setTimeout(() => {
+                logContent.innerHTML += '<div class="log-item success">✅ Click "Run workflow", paste link & start!</div>';
+                window.open(workflowUrl, '_blank');
+            }, 1000);
         }
     </script>
 </body>
