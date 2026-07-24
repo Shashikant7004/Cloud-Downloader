@@ -54,6 +54,7 @@
             transition: 0.3s;
         }
         button:hover { opacity: 0.9; transform: translateY(-1px); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
         .logs-box {
             margin-top: 20px;
             background: #020617;
@@ -67,8 +68,20 @@
             overflow-y: auto;
             display: none;
         }
-        .log-item { margin: 6px 0; word-break: break-all; }
+        .log-item { margin: 6px 0; display: flex; align-items: center; gap: 8px; word-break: break-all; }
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid #38bdf8;
+            border-top: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .success { color: #4ade80; }
+        .error { color: #f87171; }
         .info { color: #38bdf8; }
     </style>
 </head>
@@ -86,8 +99,9 @@
     </div>
 
     <script>
-        function startProcess() {
+        async function startProcess() {
             const urlInput = document.getElementById('fileUrl');
+            const btn = document.getElementById('actionBtn');
             const logsBox = document.getElementById('logsBox');
             const logContent = document.getElementById('logContent');
 
@@ -98,15 +112,36 @@
                 return;
             }
 
+            btn.disabled = true;
             logsBox.style.display = 'block';
-            logContent.innerHTML = '<div class="log-item info">🔄 GitHub Actions par secure redirection prepare ho raha hai...</div>';
+            logContent.innerHTML = '<div class="log-item"><div class="spinner"></div> Secure server par request bhej rahe hain...</div>';
 
-            const workflowUrl = 'https://github.com/shashikant7004/Cloud-Downloader/actions/workflows/download.yml';
+            try {
+                // Vercel Serverless Function ko call kar rahe hain (No token exposed on client)
+                const response = await fetch('/api/trigger', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                });
 
-            setTimeout(() => {
-                logContent.innerHTML += '<div class="log-item success">✅ Ready! Naye tab mein GitHub khul raha hai, wahan "Run workflow" par click karein.</div>';
-                window.open(workflowUrl, '_blank');
-            }, 1200);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Server trigger fail ho gaya');
+                }
+
+                logContent.innerHTML = '<div class="log-item"><div class="spinner"></div> 🚀 Scan & Download queue mein start ho gaya hai...</div>';
+                
+                // Thoda wait karke success message dikha do
+                setTimeout(() => {
+                    logContent.innerHTML += '<div class="log-item success">✅ Process successfully trigger ho gaya! GitHub Actions check karein.</div>';
+                    btn.disabled = false;
+                }, 4000);
+
+            } catch (err) {
+                logContent.innerHTML = `<div class="log-item error">❌ Error: ${err.message}</div>`;
+                btn.disabled = false;
+            }
         }
     </script>
 </body>
